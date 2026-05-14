@@ -1,0 +1,88 @@
+---
+title: "Starting with R"
+author: "Søren L.F. Lageri"
+date: "2026-03-03"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### 1) Use R to figure out how many elements in the vector below are greater than 2.
+
+```{r rooms}
+# We first define the vector given
+rooms <- c(1, 5, 2, 3, 1, NA, 3, 1, 3, 2, NA, 1, 8, 3, 1, 4, NA, 1, 3, 1, 2, 1, 7, 1, NA, 4, 3 ,1 ,7 ,2 ,1 ,NA ,1, 1, 3)
+
+# Then we define a new vector, where we filter out the missing data (NA) by using !is.na(rooms).
+
+vectors_greater_than_2 <- rooms[rooms >= 3 & !is.na(rooms)] # We write 3 to not include 2.
+
+# We print it
+vectors_greater_than_2
+
+# We find the total length of the new vector to get a value for the amount of elements which were greater than 2.
+length(rooms)
+length(vectors_greater_than_2)
+
+```
+In the original vector there are `r length(rooms)` total elements.
+
+There are `r length(vectors_greater_than_2)` elements in the list of vectors which are greater than 2.
+
+### 2) Which function tells you the type of data the 'rooms' vector above contains?
+
+```{r data type. True or false}
+# We create a new list, which runs TRUE or FALSE statements.
+c(
+  Numeric   = is.numeric(rooms),
+  Integer   = is.integer(rooms),
+  Character = is.character(rooms),
+  Logical   = is.logical(rooms)
+)
+```
+Since we are dealing with a vector, which has numbers, it is logical to expect that the data is numerical.
+
+However, this was solved before we heard about the summary function str(argument). Which is simpler and faster solution.
+
+```{r data type. Summary}
+summary_rooms <- str(rooms)
+```
+From the summary function we can see that the data is numeric, confirming the previous result.
+
+### 3) What is the result of running the median() function on the above 'rooms' vector?
+
+```{r median}
+# We use median(Argument) function
+median_rooms <- median(rooms)
+
+# Here we include na.rm = TRUE to exclude missing data (NA)
+median_rooms_without_NA<- median(rooms, na.rm = TRUE)
+```
+
+The median when the missing data (NA) is included is: `r median_rooms` 
+
+The calculation of the median also includes the missing data (NA), which results in it being included in the median calculations.
+
+Therefore, when excluding this data from the median calculations, the median is: `r median_rooms_without_NA`
+
+### 4) Interviews
+
+```{r interviews}
+# We load the libraries
+library(tidyverse)
+library(here)
+
+# Here we load the CSV-file and count the missing data (NA) as null.
+# It finds the CSV-file in our data directory.
+interviews <- read_csv(
+  here("data/U10", "SAFI_clean.csv"), 
+  na = "NULL")
+
+```
+Link to the screenshot of Rstudio: https://github.com/Digital-Methods-HASS/AU754395_Lageri_Soeren/blob/a27e002e81bf1f5f337553d416534b17851e7d8b/Rstudio%20Screenshot.png
+
+![Screenshot of Rstudio](C:/Users/sl200\OneDrive - Aarhus universitet/6. semester/Digitale arkiver og metoder/DAM - R/figures/Rstudio Screenshot.png)
