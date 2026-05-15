@@ -39,17 +39,13 @@ separator/delimiter: ; (semi colon)
 ```{r eval=TRUE}
 # FILL IN THE CODE BELOW and review the outputs.
 
-kings1 <- read.csv("C:/Users/sl200/OneDrive - Aarhus universitet/6. semester/Digitale arkiver og metoder/DAM - R/data/U11/Monark_ark_Danish.csv")
+kings1 <- read.csv("../week11/Monark_ark_Danish.csv")
 
-kings2 <- read_csv("C:/Users/sl200/OneDrive - Aarhus universitet/6. semester/Digitale arkiver og metoder/DAM - R/data/U11/Monark_ark_Danish.csv")
+kings2 <- read_csv("../week11/Monark_ark_Danish.csv")
 
-kings3 <- read.csv2("C:/Users/sl200/OneDrive - Aarhus universitet/6. semester/Digitale arkiver og metoder/DAM - R/data/U11/Monark_ark_Danish.csv")
+kings3 <- read.csv2("../week11/Monark_ark_Danish.csv")
 
-kings4 <- read_csv2("C:/Users/sl200/OneDrive - Aarhus universitet/6. semester/Digitale arkiver og metoder/DAM - R/data/U11/Monark_ark_Danish.csv")
-
-# We cannot only use "data/U11/Monark_ark_Danish.csv" to load the file.
-# This is due to the R Markdown file being stored in a sub-directory in the R project file.
-# Therefore, we load the file by providing the path to the file directly.
+kings4 <- read_csv2("../week11/Monark_ark_Danish.csv")
 ```
 
 
@@ -266,5 +262,3 @@ ggsave("Duration of Danish Monarchs' Reigns Through Time.png" , width=14, height
 
 And to submit this rmarkdown, knit it into html. But first, clean up the code chunks, adjust the date, rename the author and change the `eval=FALSE` flag to `eval=TRUE` so your script actually generates an output.
 Well done!
-
-

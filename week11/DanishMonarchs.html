@@ -399,9 +399,9 @@ functions below and inspect the different outputs.</h5>
 </ul>
 <pre class="r"><code># FILL IN THE CODE BELOW and review the outputs.
 
-kings1 &lt;- read.csv(&quot;C:/Users/sl200/OneDrive - Aarhus universitet/6. semester/Digitale arkiver og metoder/DAM - R/data/U11/Monark_ark_Danish.csv&quot;)
+kings1 &lt;- read.csv(&quot;../week11/Monark_ark_Danish.csv&quot;)
 
-kings2 &lt;- read_csv(&quot;C:/Users/sl200/OneDrive - Aarhus universitet/6. semester/Digitale arkiver og metoder/DAM - R/data/U11/Monark_ark_Danish.csv&quot;)</code></pre>
+kings2 &lt;- read_csv(&quot;../week11/Monark_ark_Danish.csv&quot;)</code></pre>
 <pre><code>## Rows: 57 Columns: 1
 ## ── Column specification ────────────────────────────────────────────────────────
 ## Delimiter: &quot;,&quot;
@@ -409,9 +409,9 @@ kings2 &lt;- read_csv(&quot;C:/Users/sl200/OneDrive - Aarhus universitet/6. seme
 ## 
 ## ℹ Use `spec()` to retrieve the full column specification for this data.
 ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.</code></pre>
-<pre class="r"><code>kings3 &lt;- read.csv2(&quot;C:/Users/sl200/OneDrive - Aarhus universitet/6. semester/Digitale arkiver og metoder/DAM - R/data/U11/Monark_ark_Danish.csv&quot;)
+<pre class="r"><code>kings3 &lt;- read.csv2(&quot;../week11/Monark_ark_Danish.csv&quot;)
 
-kings4 &lt;- read_csv2(&quot;C:/Users/sl200/OneDrive - Aarhus universitet/6. semester/Digitale arkiver og metoder/DAM - R/data/U11/Monark_ark_Danish.csv&quot;)</code></pre>
+kings4 &lt;- read_csv2(&quot;../week11/Monark_ark_Danish.csv&quot;)</code></pre>
 <pre><code>## ℹ Using &quot;&#39;,&#39;&quot; as decimal and &quot;&#39;.&#39;&quot; as grouping mark. Use `read_delim()` for more control.
 ## Rows: 57 Columns: 11── Column specification ────────────────────────────────────────────────────────
 ## Delimiter: &quot;;&quot;
@@ -420,9 +420,6 @@ kings4 &lt;- read_csv2(&quot;C:/Users/sl200/OneDrive - Aarhus universitet/6. sem
 ## lgl (6): Born_certain, Born_approx, Born_unknown, Dead_certain, Dead_approx,...
 ## ℹ Use `spec()` to retrieve the full column specification for this data.
 ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.</code></pre>
-<pre class="r"><code># We cannot only use &quot;data/U11/Monark_ark_Danish.csv&quot; to load the file.
-# This is due to the R Markdown file being stored in a sub-directory in the R project file.
-# Therefore, we load the file by providing the path to the file directly.</code></pre>
 </div>
 </div>
 <div id="answer" class="section level1">
