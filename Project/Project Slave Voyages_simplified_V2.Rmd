@@ -137,7 +137,7 @@ Average_overall_mortality_percentage <- Captives_data %>%
   summarize(Average_mortality_percentage = mean(Overall_mortality_rate_percentage, na.rm = TRUE))
 ```
 
-The total amount of captives who perished was `r format(Captives_data$Perished[37], big.mark = ".", decimal.mark = ",", scientific = FALSE)` or `r round(Captives_data$Perished[37]/1e6,2)` million. The average mortality rate percentage was `r Average_mortality_percentage[1,1]`% across all voyages throughout the period.
+The total amount of captives who perished was `r format(Captives_data$Perished[37], big.mark = ".", decimal.mark = ",", scientific = FALSE)` or `r round(Captives_data$Perished[37]/1e6,2)` million. The average mortality rate percentage was `r Average_overall_mortality_percentage[1,1]`% across all voyages throughout the period.
 
 To create a stacked bar chart we need to separate the entire bar for one $x$-value into their own respective values.
 
@@ -302,8 +302,6 @@ Average_mortality_percentage <- Long_captives_data %>%
 
 Average_mortality_percentage
 ```
-
-
 
 ```{r perished captives pr country}
 # Abolition of slavery for each country
