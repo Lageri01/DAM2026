@@ -1,0 +1,656 @@
+---
+output:
+  html_document: default
+  pdf_document: default
+---
+```{r date setup, include=FALSE}
+# date: "`r format(Sys.Date(), '%d-%m-%Y')`" can be used to get DD-MM-YYYY.
+Sys.setlocale("LC_TIME", "C") # Used to get english month.
+```
+---
+title: "Slave Voyages Code"
+author: "Søren. L. F. Lageri"
+date: 'Created 28 May 2026, updated: `r format(Sys.Date(), "%d. %B %Y")`'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      message=FALSE)
+```
+
+```{r library}
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(ggtext)
+#sessionInfo()
+```
+
+The data was acquired from [The Trans-Atlantic Slave Trade Database](https://www.slavevoyages.org/).
+
+The csv-files, which was used in this project, can be found here:
+
+* https://www.slavevoyages.org/voyage/trans-atlantic#table
+
+* https://www.slavevoyages.org/voyage/trans-atlantic#voyages
+
+We combined both the embarked and disembarked csv-files into one csv-file with R.
+
+### First we look at the amount of ships and the amount of captives they had when they embarked.
+
+```{r loading data and comibining them}
+# We load the data and immediately add Spain and Portugal to Spain / Uruguay and Portugal / Brazil respectively.
+
+Embarked_captives_data <- read_csv("../Project/Sum-of-embarked-captives-(IMP)-10-year-periods-with-Flag-(IMP)-fixed.csv")
+Embarked_captives_data <- Embarked_captives_data %>%
+  mutate(
+    `Spain / Uruguay` =
+      `Spain / Uruguay` + Spain,
+    `Portugal / Brazil` =
+      `Portugal / Brazil` + Portugal
+  ) %>%
+  select(
+    -Spain,
+    -Portugal
+  )
+
+Disembarked_captives_data <- read_csv("../Project/Sum-of-disembarked-captives-(IMP)-10-year-periods-with-Flag-(IMP)-fixed.csv")
+Disembarked_captives_data <- Disembarked_captives_data %>%
+  mutate(
+    `Spain / Uruguay` =
+      `Spain / Uruguay` + Spain,
+    `Portugal / Brazil` =
+      `Portugal / Brazil` + Portugal
+  ) %>%
+  select(
+    -Spain,
+    -Portugal
+  )
+
+Captives_data <- Embarked_captives_data %>%
+  left_join(                         # We add the other dataset to the right (joins by left).
+    Disembarked_captives_data,
+    by = "Year range",               # They are joined up by year.
+    suffix = c("_Embarked", "_Disembarked") #  and add the suffix to each coloumn name to be able to distinguish between them.
+  )
+
+#Voyage_data <- read_csv("../Project/trans-atlantic-selected.csv")
+
+```
+
+```{r embark plot, fig.width=10, fig.height=6}
+
+Total_Embarked_plot <- ggplot(
+  Captives_data %>% slice(1:36),
+  aes(x = `Year range`, y = All_Embarked)
+) +
+  geom_col(color = "black", fill = "orange") +
+  scale_y_continuous(labels = scales::label_comma()) +
+  scale_x_discrete(
+    breaks = Captives_data$`Year range`[1:36][seq(1, 36, by = 5)]
+  ) +
+  labs(
+    title = "<b>Graph 1:</b> Total amount of embarked captives from all countries",
+    x = "Year range (50-year gap between ticks)",
+    y = "Total embarked captives"
+  ) +
+  theme_linedraw() +
+  theme(
+    plot.title = ggtext::element_markdown(),
+    text = element_text(size = 14),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+
+Total_Embarked_plot
+```
+
+```{r include=FALSE}
+ggsave("Graphs/Total_Embarked_captives.png", width = 10, height = 6)
+```
+
+
+The total amount of captives who embarked throughout the Trans Atlantic Slave Trade was `r format(Captives_data$All_Embarked[37], big.mark = ".", decimal.mark = ",", scientific = FALSE)` or `r round(Captives_data$All_Embarked[37] / 1e6, 2)` million people.
+
+### Now we look at the amount of captives who perished during the voyage
+
+We can make a simple equation that involves taking the amount of embarked captives and subtracting it from the amount of disembarked captives.
+
+$$
+\text{Perished captives}=\text{Embarked captives}-\text{Disembarked captives}
+$$
+Latsly, we can find how big a percentage the perished made out of the embarked captives with the following equation.
+
+$$
+\text{Mortality rate percentage}=\frac{\text{Perished captives}}{\text{Embarked captives}}\cdot100
+$$
+
+The bodies of the captives who perished were most likely thrown in the ocean which would explain why the amount of disembarked captives was lower.
+
+```{r average mortality percentage}
+Captives_data <- Captives_data %>%
+  mutate(
+    Perished = All_Embarked - All_Disembarked,
+    Overall_mortality_rate_percentage = round((Perished / All_Embarked) * 100, 2))
+
+Average_overall_mortality_percentage <- Captives_data %>%
+  summarize(Average_mortality_percentage = mean(Overall_mortality_rate_percentage, na.rm = TRUE))
+```
+
+The total amount of captives who perished was `r format(Captives_data$Perished[37], big.mark = ".", decimal.mark = ",", scientific = FALSE)` or `r round(Captives_data$Perished[37]/1e6,2)` million. The average mortality rate percentage was `r Average_mortality_percentage[1,1]`% across all voyages throughout the period.
+
+To create a stacked bar chart we need to separate the entire bar for one $x$-value into their own respective values.
+
+i.e. we need to separate the values for the amount of captives who survived and how many perished.
+
+```{r combining and reshaping data for facet}
+Perished_stacked <- Captives_data %>%
+  slice(1:36) %>%   # Choose the first 37 rows
+  mutate(
+    Perished = All_Embarked - All_Disembarked,
+    Mortality_rate_percentage = if_else(
+      All_Embarked == 0,
+      0,
+      Perished / All_Embarked * 100)
+    ) %>% 
+  transmute(        
+    `Year range`,
+    Survived = All_Disembarked,  # We define survived and perished
+    Perished = Perished
+  ) %>%
+  tidyr::pivot_longer(            # pivot_longer is used to increase the number of rows and decrease the number of columns.
+    cols = c(Survived, Perished), # # We create two columns
+    names_to = "Status",
+    values_to = "Captives"
+  )
+
+# Prepare data for faceted plot
+Facet_data <- bind_rows(
+  Perished_stacked %>%
+    mutate(Panel = "Outcome of embarked captives"),
+
+  Perished_stacked %>%
+    filter(Status == "Perished") %>%
+    mutate(Panel = "Perished captives")
+)
+```
+
+https://www.rdocumentation.org/packages/tidyr/versions/1.3.2/topics/pivot_longer
+
+Now we are ready to make our stacked bar chart.
+
+```{r perish data facet, fig.width=10, fig.height=8}
+# Create faceted plot
+Tot_perished_captives_facet_plot <- ggplot(
+  Facet_data,
+  aes(x = `Year range`, y = Captives, fill = Status)
+) +
+  geom_col(color="#123524") +
+  facet_wrap(~Panel, ncol = 1, scales = "free_y") +
+  scale_fill_manual(
+    values = c(
+      "Survived" = "steelblue",
+      "Perished" = "black"
+    )
+  ) +
+  scale_y_continuous(labels = scales::label_number(big.mark = ".", decimal.mark = ",")
+  ) +
+  scale_x_discrete(breaks = Captives_data$`Year range`[1:36][seq(1, 36, by = 5)]
+  ) +
+  labs(
+    title = "<b>Graph 2:</b> The outcome for embarked captives over time",
+    x = "Year range (50-year gap between each tick)",
+    y = "Number of captives",
+    fill = "Outcome"
+  ) +
+  theme_linedraw() +
+  theme(
+    plot.title = ggtext::element_markdown(),
+    text = element_text(size = 14),
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 14),
+    axis.text.y = element_text(size = 14),
+    strip.text = element_text(face = "bold")
+  )
+
+# Creating the mortality percentage plot
+Mortality_percentage_plot <- ggplot(
+  Captives_data %>% slice(1:36),
+  aes(x = `Year range`, y = Overall_mortality_rate_percentage, group = 1)
+) +
+  geom_line(linewidth = 2, color = "red") +
+  geom_point(size = 3, color = "black") +
+  scale_y_continuous(
+    labels = scales::label_number(suffix = "%")
+  ) +
+  scale_x_discrete(breaks = Captives_data$`Year range`[1:36][seq(1, 36, by = 5)]
+  ) +
+  labs(
+    title = "<b>Graph 3:</b> Mortality rate of captives over time in percentage",
+    x = "Year range (50-year gap between each tick)",
+    y = "Mortality rate (%)"
+  ) +
+  theme_linedraw() +
+  theme(
+    plot.title = ggtext::element_markdown(),
+    text = element_text(size = 14),
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 14),
+    axis.text.y = element_text(size = 14)
+  )
+
+# Display plot
+Tot_perished_captives_facet_plot
+```
+
+```{r include=FALSE}
+ggsave("Graphs/Total_perished_captives_facet.png", width = 10, height = 8)
+```
+
+#### The corresponding mortality percentages.
+
+```{r mortality plot, fig.width=10, fig.height=6}
+Mortality_percentage_plot
+```
+
+```{r include=FALSE}
+ggsave("Graphs/Total_mortality_rate.png", width = 10, height = 6)
+```
+
+Although the absolute number of deaths increased during periods of peak slave-trading activity, the mortality rate generally declined over time. This indicates that a smaller proportion of embarked captives died during the Middle Passage, even as the total number transported—and consequently the total number who perished—remained extremely high.
+
+However, one thing that cannot be deducted from the plots is that even though the mortality rate was lowered, that does not mean the conditions onboard the ship were better. We know from sources, that the captives were packed very tightly in cramped spaces to maximize the amount of natives, which could be transported. 
+(https://cdn.britannica.com/07/182907-050-C67CF42C/Detail-slave-ship-British-broadside-manner-children.jpg)
+
+
+### Let us examine which country had the highest amount of captives who perished.
+
+#### We will also find when each country abolished slavery. 
+
+```{r creating new data format and finding avg mortality rate. Probably bad to do it this way}
+# We define a new data set. This will be used here to calculate the average and later.
+Long_captives_data <- Captives_data %>%
+  slice(1:36) %>%
+  
+  select(
+    `Year range`,
+    matches("_Embarked$|_Disembarked$")
+  ) %>%
+  
+  select(-starts_with("All")) %>%
+  pivot_longer(
+    -`Year range`,
+    names_to = c("Country", ".value"),
+    names_pattern = "(.*)_(Embarked|Disembarked)"
+  ) %>%
+  
+  mutate(
+    Perished = Embarked - Disembarked,
+    Mortality_rate_percentage = if_else(
+      Embarked == 0,
+      0,
+      Perished / Embarked * 100
+    )
+  )
+
+Long_captives_data
+
+Average_mortality_percentage <- Long_captives_data %>%
+  filter(Mortality_rate_percentage != 0) %>%
+  summarize(
+    Average_mortality_percentage =
+      mean(Mortality_rate_percentage, na.rm = TRUE)
+  )
+
+Average_mortality_percentage
+```
+
+
+
+```{r perished captives pr country}
+# Abolition of slavery for each country
+
+abolition_years <- tibble::tribble(
+  ~Country, ~abolished_slavery_year,
+  "Portugal / Brazil", 1836,
+  "Great Britain", 1807,
+  "France", 1817,
+  "Spain / Uruguay", 1817
+)
+
+Perished_by_country <- Captives_data %>%
+  slice(1:36) %>%
+  select(matches("_Embarked$|_Disembarked$")) %>%
+  select(-starts_with("All")) %>%
+  
+  pivot_longer(
+    everything(),
+    names_to = c("Country", ".value"),
+    names_pattern = "(.*)_(Embarked|Disembarked)"
+  ) %>%
+  
+  mutate(
+    Perished = Embarked - Disembarked
+  ) %>%
+  
+  group_by(Country) %>%
+  summarise(
+    Total_perished = sum(Perished, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  
+  left_join(abolition_years, by = "Country") %>%
+  
+  arrange(desc(Total_perished))
+
+Perished_by_country
+```
+
+```{r}
+Perished_by_country[1:6,]
+```
+We decided to focus on Great Britain, Portugal / Brazil, France, and Spain / Uruguay.
+Since we cannot conclude anything from the Country labeled as Undefined, will they be excluded from the following plots.
+
+### Looking at the individual countries mortality rate
+
+```{r facet, fig.width=14, fig.height=8}
+# Chosen countries we want to examine
+Chosen_countries <- c(
+  "Portugal / Brazil",
+  "Great Britain",
+  "France",
+  "Spain / Uruguay"
+)
+
+# Creating a country dataset
+Country_data <- Captives_data %>%
+  slice(1:36) %>%
+  select(
+    `Year range`,
+    matches("_Embarked$|_Disembarked$")
+  ) %>%
+  select(-starts_with("All")) %>%
+  pivot_longer(
+    -`Year range`,
+    names_to = c("Country", ".value"),
+    names_pattern =
+      "(.*)_(Embarked|Disembarked)"
+  ) %>%
+  
+  filter(
+    Country %in% Chosen_countries
+  ) %>%
+  
+  mutate(
+  Perished = Embarked - Disembarked,
+
+  Mortality_rate_percentage =
+    replace(
+      Perished / Embarked * 100,
+      is.nan(Perished / Embarked * 100),
+      0
+    )
+)
+
+# Preparing the facet data
+Facet_plot_countries <- bind_rows(
+
+  # Outcome plot
+  Country_data %>%
+    select(
+      `Year range`,
+      Country,
+      Survived = Disembarked,
+      Perished
+    ) %>%
+    pivot_longer(
+      cols = c(Survived, Perished),
+      names_to = "Status",
+      values_to = "Value"
+    ) %>%
+    mutate(
+      Panel = "Outcome of embarked captives"
+    ),
+
+  # Perished captives
+  Country_data %>%
+    transmute(
+      `Year range`,
+      Country,
+      Status = "Perished",
+      Value = Perished,
+      Panel = "Perished captives"
+    ),
+
+  # Mortality rate
+  Country_data %>%
+    transmute(
+      `Year range`,
+      Country,
+      Status = "Mortality rate",
+      Value = Mortality_rate_percentage,
+      Panel = "Mortality rate percentage"
+    )
+)
+
+
+abolition_lines <- abolition_years %>%
+  
+  mutate(
+    
+    Year_range_position = sapply(
+      abolished_slavery_year,
+      function(year) {
+        
+        unique(Facet_plot_countries$`Year range`)[
+          sapply(
+            strsplit(unique(Facet_plot_countries$`Year range`), "-"),
+            function(rng) {
+              
+              lower <- as.numeric(rng[1])
+              upper <- as.numeric(rng[2])
+              
+              year >= lower & year <= upper
+            }
+          )
+        ]
+      }
+    ),
+
+    x_position =
+      match(
+        Year_range_position,
+        unique(Facet_plot_countries$`Year range`)
+      ),
+
+    label = paste0(
+      "Abolished\n",
+      abolished_slavery_year
+    )
+  )
+```
+
+```{r, fig.width=14, fig.height=4}
+Outcome_plot <- Facet_plot_countries %>%
+  filter(Panel == "Outcome of embarked captives") %>%
+
+ggplot(
+  aes(x = `Year range`, y = Value, fill = Status)
+) +
+  geom_col(color = "#123524") +
+  facet_wrap(~Country, nrow = 1) +
+  scale_fill_manual(
+    values = c(
+      "Survived" = "steelblue",
+      "Perished" = "black"
+    )
+  ) +
+  geom_vline(
+  data = abolition_lines,
+  aes(xintercept = x_position),
+  linetype = "longdash",
+  linewidth = 1.5,
+  color = "darkmagenta",
+  inherit.aes = FALSE
+) +
+
+geom_text(
+  data = abolition_lines,
+  aes(
+    x = x_position*0.21,
+    y = Inf,
+    label = label
+  ),
+  vjust = 1.5,
+  color = "darkmagenta",
+  size = 3.5,
+  inherit.aes = FALSE
+) +
+  scale_x_discrete(
+    breaks =
+      Captives_data$`Year range`[1:36][seq(1, 36, by = 5)]
+  ) +
+
+  scale_y_continuous(
+    labels = scales::label_comma()
+  ) +
+
+  labs(
+    title = "<b>Graph 4a:</b> Outcome of embarked captives",
+    x = "Year range (50-year gap between each tick)",
+    y = "Number of captives",
+    fill = "Category"
+  ) +
+  coord_cartesian(clip = "off") +
+  theme_linedraw() +
+  theme(
+    plot.title = ggtext::element_markdown(),
+    text = element_text(size = 12),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    strip.text = element_text(face = "bold")
+  )
+Outcome_plot
+
+ggsave("Graphs/4.a.Chosen_countries.png", width=14, height=4)
+```
+
+```{r, fig.width=14, fig.height=4}
+Perished_plot <- Facet_plot_countries %>%
+  filter(Panel == "Perished captives") %>%
+
+ggplot(
+  aes(x = `Year range`, y = Value, fill = Status)
+) +
+  geom_col(color = "#123524") +
+
+  facet_wrap(~Country, nrow = 1) +
+
+  scale_fill_manual(
+    values = c("Perished" = "black")
+  ) +
+
+  scale_x_discrete(
+    breaks =
+      Captives_data$`Year range`[1:36][seq(1, 36, by = 5)]
+  ) +
+
+  scale_y_continuous(
+    labels = scales::label_comma()
+  ) +
+
+  labs(
+    title = "<b>Graph 4b:</b> Perished captives",
+    x = "Year range (50-year gap between each tick)",
+    y = "Number of captives",
+    fill = "Category"
+  ) +
+    geom_vline(
+  data = abolition_lines,
+  aes(xintercept = x_position),
+  linetype = "longdash",
+  linewidth = 1.5,
+  color = "darkmagenta",
+  inherit.aes = FALSE
+) +
+
+geom_text(
+  data = abolition_lines,
+  aes(
+    x = x_position*0.21,
+    y = Inf,
+    label = label
+  ),
+  vjust = 1.5,
+  color = "darkmagenta",
+  size = 3.5,
+  inherit.aes = FALSE
+) +
+  coord_cartesian(clip = "off") +
+  theme_linedraw() +
+  theme(
+    plot.title = ggtext::element_markdown(),
+    text = element_text(size = 12),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    strip.text = element_text(face = "bold")
+  )
+Perished_plot
+ggsave("Graphs/4.b.Chosen_countries.png", width=14, height=4)
+```
+
+```{r , fig.width=14, fig.height=4}
+Mortality_plot <- Facet_plot_countries %>%
+  filter(Panel == "Mortality rate percentage") %>%
+
+ggplot(
+  aes(x = `Year range`, y = Value, fill = Status)
+) +
+  geom_col(color = "#123524") +
+
+  facet_wrap(~Country, nrow = 1) +
+
+  scale_fill_manual(
+    values = c("Mortality rate" = "red")
+  ) +
+
+  scale_x_discrete(
+    breaks =
+      Captives_data$`Year range`[1:36][seq(1, 36, by = 5)]
+  ) +
+
+  labs(
+    title = "<b>Graph 4c:</b> Mortality rate percentage",
+    x = "Year range (50-year gap between each tick)",
+    y = "Mortality rate (%)",
+    fill = "Category"
+  ) +
+    geom_vline(
+  data = abolition_lines,
+  aes(xintercept = x_position),
+  linetype = "longdash",
+  linewidth = 1.5,
+  color = "darkmagenta",
+  inherit.aes = FALSE
+) +
+
+geom_text(
+  data = abolition_lines,
+  aes(
+    x = x_position*0.21,
+    y = Inf,
+    label = label
+  ),
+  vjust = 1.5,
+  color = "darkmagenta",
+  size = 3.5,
+  inherit.aes = FALSE
+) +
+  coord_cartesian(clip = "off") +
+  theme_linedraw() +
+  theme(
+    plot.title = ggtext::element_markdown(),
+    text = element_text(size = 12),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    strip.text = element_text(face = "bold")
+  )
+Mortality_plot
+ggsave("Graphs/4.c.Chosen_countries.png", width=14, height=4)
+```
