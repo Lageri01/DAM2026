@@ -35,6 +35,8 @@ The csv-files, which was used in this project, can be found here:
 
 * https://www.slavevoyages.org/voyage/trans-atlantic#voyages
 
+* 
+
 We combined both the embarked and disembarked csv-files into one csv-file with R.
 
 ### First we look at the amount of ships and the amount of captives they had when they embarked.
@@ -75,8 +77,8 @@ Captives_data <- Embarked_captives_data %>%
     suffix = c("_Embarked", "_Disembarked") #  and add the suffix to each coloumn name to be able to distinguish between them.
   )
 
-#Voyage_data <- read_csv("../Project/trans-atlantic-selected.csv")
 
+Voyage_data <- read_csv("../Project/trans-atlantic-selected.csv")
 ```
 
 ```{r embark plot, fig.width=10, fig.height=6}
@@ -119,7 +121,7 @@ We can make a simple equation that involves taking the amount of embarked captiv
 $$
 \text{Perished captives}=\text{Embarked captives}-\text{Disembarked captives}
 $$
-Latsly, we can find how big a percentage the perished made out of the embarked captives with the following equation.
+Lastly, we can find how big a percentage the perished made out of the embarked captives with the following equation.
 
 $$
 \text{Mortality rate percentage}=\frac{\text{Perished captives}}{\text{Embarked captives}}\cdot100
@@ -468,6 +470,8 @@ abolition_lines <- abolition_years %>%
 ```
 
 ```{r, fig.width=14, fig.height=4}
+AxisText_SizeAll = 12
+
 Outcome_plot <- Facet_plot_countries %>%
   filter(Panel == "Outcome of embarked captives") %>%
 
@@ -522,8 +526,9 @@ geom_text(
   theme_linedraw() +
   theme(
     plot.title = ggtext::element_markdown(),
-    text = element_text(size = 12),
-    axis.text.x = element_text(angle = 45, hjust = 1),
+    text = element_text(size = AxisText_SizeAll),
+    axis.text.x = element_text(angle = 45, hjust = 1,size=AxisText_SizeAll),
+    axis.text.y = element_text(size=AxisText_SizeAll),
     strip.text = element_text(face = "bold")
   )
 Outcome_plot
@@ -586,8 +591,9 @@ geom_text(
   theme_linedraw() +
   theme(
     plot.title = ggtext::element_markdown(),
-    text = element_text(size = 12),
-    axis.text.x = element_text(angle = 45, hjust = 1),
+    text = element_text(size = AxisText_SizeAll),
+    axis.text.x = element_text(angle = 45, hjust = 1,size=AxisText_SizeAll),
+    axis.text.y = element_text(size=AxisText_SizeAll),
     strip.text = element_text(face = "bold")
   )
 Perished_plot
@@ -645,10 +651,202 @@ geom_text(
   theme_linedraw() +
   theme(
     plot.title = ggtext::element_markdown(),
-    text = element_text(size = 12),
-    axis.text.x = element_text(angle = 45, hjust = 1),
+    text = element_text(size = AxisText_SizeAll),
+    axis.text.x = element_text(angle = 45, hjust = 1,size=AxisText_SizeAll),
+    axis.text.y = element_text(size=AxisText_SizeAll),
     strip.text = element_text(face = "bold")
   )
 Mortality_plot
 ggsave("Graphs/4.c.Chosen_countries.png", width=14, height=4)
+```
+
+### Lastly, we look at the tonnage of the ships.
+
+We think there will be a lineary coalation between the tonnage of the ship and the amount of captives who perished on the ship.
+
+```{r tonnage 1}
+Chosen_countries_2 <- c(
+  "Portugal / Brazil",
+  "Portugal",
+  "Great Britain",
+  "France",
+  "Spain / Uruguay",
+  "Spain"
+)
+
+Voyage_data_tonnage <- Voyage_data %>% 
+  select(`Year arrived with captives`,`Total disembarked (IMP)`,`Total embarked (IMP)`,`Standardized Tonnage (IMP)`,`Flag of vessel (IMP)`) %>%
+  mutate(`Perished` = `Total embarked (IMP)`-`Total disembarked (IMP)`,
+         Mortality_rate = round(`Perished` / `Total embarked (IMP)` * 100,2)) %>% 
+  arrange(desc(`Standardized Tonnage (IMP)`))
+
+Tonnage_summary <- Voyage_data %>%
+  select(
+    `Standardized Tonnage (IMP)`,
+    `Flag of vessel (IMP)`
+  ) %>%
+  filter(`Flag of vessel (IMP)` %in% Chosen_countries_2) %>%
+  mutate(
+    `Flag of vessel (IMP)` = case_when(
+      `Flag of vessel (IMP)` == "Portugal" ~ "Portugal / Brazil",
+      `Flag of vessel (IMP)` == "Spain" ~ "Spain / Uruguay",
+      TRUE ~ `Flag of vessel (IMP)`
+    )
+  ) %>%
+  filter(`Standardized Tonnage (IMP)` > 0) %>%
+  group_by(`Flag of vessel (IMP)`) %>%
+  summarise(
+    Voyages = n(),
+    Average_tonnage = round(mean(`Standardized Tonnage (IMP)`, na.rm = TRUE), 1),
+    .groups = "drop"
+  ) %>%
+  arrange(desc(Voyages))
+
+Tonnage_summary
+
+```
+
+
+```{r, fig.width=14, fig.height=4}
+Tonnage_VS_mortality_rate_plot <- Voyage_data_tonnage %>%
+  filter(`Flag of vessel (IMP)` %in% Chosen_countries_2) %>%
+  mutate(
+    `Flag of vessel (IMP)` = case_when(
+      `Flag of vessel (IMP)` == "Portugal" ~ "Portugal / Brazil",
+      `Flag of vessel (IMP)` == "Spain" ~ "Spain / Uruguay",
+      TRUE ~ `Flag of vessel (IMP)`
+    )
+  ) %>%
+  filter(
+    `Standardized Tonnage (IMP)` > 0,
+    between(Mortality_rate, 0, 100)
+  ) %>%
+  ggplot(aes(
+    x = `Standardized Tonnage (IMP)`,
+    y = Mortality_rate
+  )) +
+  geom_point(alpha = 0.15, size = 0.8) +
+  geom_smooth(method = "lm", se = FALSE, color = "red") +
+  facet_wrap(~`Flag of vessel (IMP)`, nrow = 1 )+#, scales = "free") +
+  coord_cartesian(xlim = c(0, 650)) + # Since 38 voyages exceed a ship tonnage of 600 we ignore these but do not remove them.
+  labs(
+    title = "<b>Graph 5:</b> Ship tonnage versus mortality rate",
+    #subtitle = "Comparison of the four largest slave-trading nations",
+    x = "Standardized tonnage",
+    y = "Mortality rate (%)"
+  ) +
+  theme_linedraw() +
+  theme(
+    plot.title = ggtext::element_markdown(),
+    text = element_text(size = AxisText_SizeAll+2),
+    strip.text = element_text(face = "bold"),
+    axis.text.x = element_text(size = AxisText_SizeAll+2),
+    axis.text.y = element_text(size = AxisText_SizeAll+2)
+  )
+Tonnage_VS_mortality_rate_plot
+ggsave("Graphs/TonnageVSmortalityrate.png", width=14, height=4)
+```
+The graph shows the relationship between standardized ship tonnage and mortality rate for the four largest slave-trading nations. The fitted linear regression lines are nearly horizontal in all four panels, indicating little to no linear relationship between ship size and mortality rate. While mortality rates vary considerably between voyages, larger ships do not appear to have systematically higher or lower mortality rates than smaller ships.
+
+Therefore, Within this dataset, no strong association between standardized ship tonnage and mortality rate is observed.
+
+One thing that stands out much more than the trend is the horizontal line of points at 100% mortality. Those correspond to voyages where:
+
+Embarked > 0
+Disembarked = 0
+
+While possible for a handful of voyages, there seem to be too many of them. They may represent voyages that were abandoned, missing data, or records where no disembarkation was recorded.
+
+We can check how many there are with:
+
+```{r}
+Voyage_data_tonnage %>%
+  filter(
+    `Standardized Tonnage (IMP)` > 0,
+    Mortality_rate == 100
+  ) %>%
+  count(`Flag of vessel (IMP)`)
+```
+Finding voyages which had a ship tonnage size greater than 600.
+
+```{r}
+Voyage_data_tonnage %>%
+  filter(`Standardized Tonnage (IMP)` > 600) %>%
+  summarise(Total_voyages = n())
+```
+38 voyages had a ship tonnage size greater than 600.
+
+### Average ship tonnage size throughout the period
+```{r, fig.width=14, fig.height=4}
+Chosen_countries <- c(
+  "Portugal / Brazil",
+  "Great Britain",
+  "France",
+  "Spain / Uruguay"
+)
+
+Average_tonnage <- Voyage_data %>%
+  filter(`Flag of vessel (IMP)` %in% Chosen_countries_2) %>%
+  mutate(
+    `Flag of vessel (IMP)` = case_when(
+      `Flag of vessel (IMP)` == "Portugal" ~ "Portugal / Brazil",
+      `Flag of vessel (IMP)` == "Spain" ~ "Spain / Uruguay",
+      TRUE ~ `Flag of vessel (IMP)`
+    )
+  ) %>%
+  filter(`Standardized Tonnage (IMP)` > 0) %>%
+  mutate(
+    Start_year = ((`Year arrived with captives` - 1511) %/% 10) * 10 + 1511,
+    `Year range` = paste0(
+      Start_year,
+      "-",
+      pmin(Start_year + 9, 1866)
+    )
+  ) %>%
+  group_by(`Flag of vessel (IMP)`, Start_year, `Year range`) %>%
+  summarise(
+    Average_tonnage = mean(`Standardized Tonnage (IMP)`, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  arrange(Start_year) %>%
+  mutate(
+    `Year range` = factor(
+      `Year range`,
+      levels = unique(`Year range`)
+    )
+  )
+
+Average_tonnage_plot <- ggplot(
+  Average_tonnage,
+  aes(
+    x = `Year range`,
+    y = Average_tonnage,
+    group = `Flag of vessel (IMP)`
+  )
+) +
+  geom_line(linewidth = 2, color = "red") +
+  geom_point(size = 3, color = "black") +
+  facet_wrap(~`Flag of vessel (IMP)`, nrow = 1, scales = "free_y") +
+  scale_x_discrete(
+    breaks = levels(Average_tonnage$`Year range`)[
+      seq(1, length(levels(Average_tonnage$`Year range`)), by = 5)
+    ]
+  ) +
+  labs(
+    title = "<b>Graph 5:</b> Average standardized ship tonnage over time",
+    x = "Year range (50-year gap between each tick)",
+    y = "Average standardized tonnage"
+  ) +
+  theme_linedraw() +
+  coord_cartesian(clip = "off") +
+  theme(
+    plot.title = ggtext::element_markdown(),
+    text = element_text(size = AxisText_SizeAll),
+    axis.text.x = element_text(angle = 45, hjust = 1,size=AxisText_SizeAll),
+    axis.text.y = element_text(size=AxisText_SizeAll),
+    strip.text = element_text(face = "bold")
+  )
+
+Average_tonnage_plot
+ggsave("Graphs/Average_tonnage_plot.png", width=14, height=4)
 ```
